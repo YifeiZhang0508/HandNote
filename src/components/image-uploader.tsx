@@ -15,6 +15,7 @@ interface ImageUploaderProps {
   isProcessing: boolean;
   hasExistingContent: boolean;
   onClear: () => void;
+  onMarkdownUpload: (content: string) => void;
 }
 
 export default function ImageUploader({
@@ -22,13 +23,30 @@ export default function ImageUploader({
   isProcessing,
   hasExistingContent,
   onClear,
+  onMarkdownUpload,
 }: ImageUploaderProps) {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mdInputRef = useRef<HTMLInputElement>(null);
+
+  const processMarkdownFile = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      onMarkdownUpload(text);
+    };
+    reader.readAsText(file);
+  }, [onMarkdownUpload]);
 
   const processFiles = useCallback((files: FileList | File[]) => {
-    const validFiles = Array.from(files).filter((file) => {
+    const fileArray = Array.from(files);
+    const mdFiles = fileArray.filter((f) => f.name.endsWith(".md"));
+    const imageFiles = fileArray.filter((f) => !f.name.endsWith(".md"));
+
+    mdFiles.forEach((f) => processMarkdownFile(f));
+
+    const validImages = imageFiles.filter((file) => {
       if (!file.type.startsWith("image/")) {
         alert(`${file.name} 不是图片文件，已跳过`);
         return false;
@@ -40,7 +58,7 @@ export default function ImageUploader({
       return true;
     });
 
-    for (const file of validFiles) {
+    for (const file of validImages) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
@@ -53,7 +71,7 @@ export default function ImageUploader({
       };
       reader.readAsDataURL(file);
     }
-  }, []);
+  }, [processMarkdownFile]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -115,7 +133,7 @@ export default function ImageUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,image/bmp"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/bmp,.md,text/markdown"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -139,10 +157,34 @@ export default function ImageUploader({
           </svg>
           <p className="text-sm font-medium">拖拽或点击上传图片（可多选）</p>
           <p className="text-xs text-zinc-400">
-            支持 JPG / PNG / WebP / GIF，也可 Ctrl+V 粘贴截图
+            支持 JPG / PNG / WebP / GIF，也可 Ctrl+V 粘贴截图。可拖拽 .md 文件导入
           </p>
         </div>
       </div>
+
+      {/* Upload .md button */}
+      <input
+        ref={mdInputRef}
+        type="file"
+        accept=".md,text/markdown"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) processMarkdownFile(file);
+          e.target.value = "";
+        }}
+      />
+      <button
+        onClick={() => mdInputRef.current?.click()}
+        disabled={disabled}
+        className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        上传 .md 文件
+      </button>
 
       {/* Preview grid */}
       {images.length > 0 && (

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import ImageUploader from "@/components/image-uploader";
 import MarkdownViewer from "@/components/markdown-viewer";
+import MarkdownEditor from "@/components/markdown-editor";
 import ModelSelector from "@/components/model-selector";
 import QuizPanel from "@/components/quiz-panel";
 import ChatPanel from "@/components/chat-panel";
@@ -41,6 +42,7 @@ export default function Home() {
   const [batchCount, setBatchCount] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const cursorRef = useRef<HTMLSpanElement>(null);
 
   // 背景装饰随鼠标微动
@@ -129,6 +131,16 @@ export default function Home() {
     setMarkdown("");
     setBatchCount(0);
     setError(null);
+    setEditMode(false);
+  }, []);
+
+  const handleMarkdownUpload = useCallback((content: string) => {
+    if (!content.trim()) return;
+    setMarkdown((prev) => (prev ? prev + `\n\n---\n\n` + content : content));
+  }, []);
+
+  const handleMarkdownChange = useCallback((value: string) => {
+    setMarkdown(value);
   }, []);
 
   const handleCopy = useCallback(async () => {
@@ -345,11 +357,13 @@ ${bodyHTML}
               isProcessing={isProcessing}
               hasExistingContent={!!markdown}
               onClear={handleClear}
+              onMarkdownUpload={handleMarkdownUpload}
             />
             <div className="mt-3 rounded-lg border border-zinc-200/60 bg-zinc-50/80 px-3 py-2.5 text-xs leading-relaxed text-zinc-500">
               <p className="mb-1 font-medium text-zinc-600">使用提示</p>
               <ul className="space-y-0.5 list-disc list-inside">
                 <li>支持多张图片同时上传，内容会自动拼接</li>
+                <li>支持上传 .md 文件直接导入 Markdown 内容</li>
                 <li>AI 圈选解析请在第一次处理完成后再发起第二次</li>
                 <li>测验、对话等功能基于当前识别结果生成</li>
               </ul>
@@ -365,7 +379,40 @@ ${bodyHTML}
         {/* 右侧：Markdown 输出 */}
         <div className="flex flex-1 flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-zinc-500">Markdown 输出</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-medium text-zinc-500">Markdown 输出</h3>
+              {markdown && (
+                <div className="flex items-center rounded-lg border border-zinc-200 bg-zinc-50 p-0.5">
+                  <button
+                    onClick={() => setEditMode(false)}
+                    className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs transition-colors ${
+                      !editMode
+                        ? "bg-white text-zinc-900 shadow-sm font-medium"
+                        : "text-zinc-500 hover:text-zinc-700"
+                    }`}
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    预览
+                  </button>
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs transition-colors ${
+                      editMode
+                        ? "bg-white text-zinc-900 shadow-sm font-medium"
+                        : "text-zinc-500 hover:text-zinc-700"
+                    }`}
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    编辑
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {isProcessing && (
                 <span className="flex items-center gap-1.5 text-xs text-blue-500">
@@ -381,8 +428,14 @@ ${bodyHTML}
               )}
             </div>
           </div>
-          <div className="animate-fade-in-up-d2 flex-1 overflow-auto rounded-xl border border-zinc-200/60 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
-            <MarkdownViewer content={markdown} onInsertNote={handleInsertNote} onAppendMarkdown={handleAppendMarkdown} onAddExpandMarker={handleAddExpandMarker} context={markdown} modelId={modelId} />
+          <div className="animate-fade-in-up-d2 flex-1 overflow-hidden rounded-xl border border-zinc-200/60 bg-white/80 shadow-sm backdrop-blur-sm">
+            {editMode && markdown ? (
+              <MarkdownEditor value={markdown} onChange={handleMarkdownChange} />
+            ) : (
+              <div className="h-full overflow-auto p-6">
+                <MarkdownViewer content={markdown} onInsertNote={handleInsertNote} onAppendMarkdown={handleAppendMarkdown} onAddExpandMarker={handleAddExpandMarker} context={markdown} modelId={modelId} />
+              </div>
+            )}
           </div>
         </div>
       </main>

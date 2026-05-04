@@ -186,3 +186,17 @@ pre code.hljs {
   [data-ai-analyze-btn] { display: none !important; }
   .katex-display { break-inside: avoid; }
 }
+
+/* ---- CodeMirror Editor ---- */
+.cm-editor {
+  height: 100%;
+  font-size: 0.875rem;
+}
+
+.cm-scroller {
+  overflow: auto;
+}
+
+.cm-editor .cm-content {
+  font-family: 'Geist Mono', 'Fira Code', 'Consolas', monospace;
+}
